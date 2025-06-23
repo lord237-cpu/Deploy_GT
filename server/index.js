@@ -159,16 +159,34 @@ app.post('/api/translate', async (req, res) => {
 
 // Route pour traduire une vidéo
 app.post('/api/translate-video', async (req, res) => {
+  const requestId = Date.now();
+  console.log(`[${requestId}] Début de la requête translate-video`);
+  
   try {
-    console.log('Début de la requête translate-video');
-    console.log('Body reçu:', req.body);
+    console.log(`[${requestId}] Body reçu:`, JSON.stringify(req.body, null, 2));
     
     const { videoUrl, targetLanguage } = req.body;
     
     if (!videoUrl || !targetLanguage) {
-      console.log('Paramètres manquants:', { videoUrl, targetLanguage });
+      const errorMsg = `[${requestId}] Paramètres manquants: ${JSON.stringify({ videoUrl, targetLanguage })}`;
+      console.error(errorMsg);
       return res.status(400).json({ 
-        error: "L'URL de la vidéo et la langue cible sont requises" 
+        error: "L'URL de la vidéo et la langue cible sont requises",
+        requestId
+      });
+    }
+
+    // Vérification des variables d'environnement requises
+    const requiredEnvVars = ['YOUTUBE_API_KEY', 'AWS_ACCESS_KEY', 'AWS_SECRET_KEY', 'AWS_REGION'];
+    const missingVars = requiredEnvVars.filter(varName => !process.env[varName]);
+    
+    if (missingVars.length > 0) {
+      const errorMsg = `[${requestId}] Variables d'environnement manquantes: ${missingVars.join(', ')}`;
+      console.error(errorMsg);
+      return res.status(500).json({
+        error: 'Configuration serveur incomplète',
+        details: `Variables manquantes: ${missingVars.join(', ')}`,
+        requestId
       });
     }
 
@@ -176,13 +194,27 @@ app.post('/api/translate-video', async (req, res) => {
     const videoFileName = `${timestamp}_video.mp4`;
     const videoPath = path.join(downloadsDir, videoFileName);
     const audioPath = path.join(downloadsDir, `${timestamp}_audio.mp3`);
-    console.log('Chemin du fichier audio:', audioPath);
-    console.log('Chemin du fichier vidéo:', videoPath);
+    
+    console.log(`[${requestId}] Chemins des fichiers:`, {
+      videoPath,
+      audioPath,
+      downloadsDir,
+      dirExists: fs.existsSync(downloadsDir)
+    });
+    
+    // Créer le répertoire de téléchargement s'il n'existe pas
+    if (!fs.existsSync(downloadsDir)) {
+      console.log(`[${requestId}] Création du répertoire de téléchargement:`, downloadsDir);
+      fs.mkdirSync(downloadsDir, { recursive: true });
+    }
 
     try {
-      console.log('Début du téléchargement de la vidéo...');
+      console.log(`[${requestId}] Début du téléchargement de la vidéo...`);
       // 1. Télécharger la vidéo avec des options optimisées
       let videoDownloaded = false;
+      let downloadError = null;
+      
+      console.log(`[${requestId}] Téléchargement de la vidéo depuis:`, videoUrl);
       
       // Première tentative avec des options optimisées
       try {
@@ -222,14 +254,39 @@ app.post('/api/translate-video', async (req, res) => {
           }
         } catch (error) {
           console.log('Méthode alternative échouée:', error.message);
+          downloadError = error;
         }
       }
       
       if (!videoDownloaded) {
-        console.error("La vidéo n'a pas été téléchargée à:", videoPath);
-        throw new Error("Le téléchargement de la vidéo a échoué après plusieurs tentatives");
+        const errorMsg = `[${requestId}] Échec du téléchargement de la vidéo après plusieurs tentatives`;
+        if (downloadError) {
+          console.error(`${errorMsg}. Dernière erreur:`, downloadError);
+        } else {
+          console.error(errorMsg);
+        }
+        throw new Error('Impossible de télécharger la vidéo. Veuillez vérifier le lien et réessayer.');
+      }
+
+      console.log(`[${requestId}] Vérification du fichier vidéo téléchargé:`, videoPath);
+      
+      if (!fs.existsSync(videoPath)) {
+        const errorMsg = `[${requestId}] Le fichier vidéo n'a pas été trouvé après le téléchargement`;
+        console.error(errorMsg);
+        throw new Error('Échec du téléchargement de la vidéo');
       }
       
+      const stats = fs.statSync(videoPath);
+      console.log(`[${requestId}] Taille du fichier vidéo: ${stats.size} octets`);
+      
+      if (stats.size === 0) {
+        const errorMsg = `[${requestId}] Le fichier vidéo est vide`;
+        console.error(errorMsg);
+        throw new Error('La vidéo téléchargée est vide');
+      }
+      
+      console.log(`[${requestId}] Vérification du fichier vidéo réussie`);
+
       console.log('Début de l\'extraction audio...');
       // 2. Extraire l'audio avec des options optimisées
       let audioExtracted = false;
@@ -330,17 +387,72 @@ app.post('/api/translate-video', async (req, res) => {
       });
 
     } catch (innerError) {
-      console.error('Erreur interne détaillée:', innerError);
-      throw innerError;
+      console.error(`[${requestId}] Erreur lors du traitement de la vidéo:`, {
+        message: innerError.message,
+        stack: innerError.stack,
+        code: innerError.code,
+        path: innerError.path
+      });
+      
+      // Nettoyage des fichiers temporaires en cas d'erreur
+      try {
+        if (fs.existsSync(videoPath)) {
+          fs.unlinkSync(videoPath);
+          console.log(`[${requestId}] Fichier vidéo temporaire supprimé:`, videoPath);
+        }
+        if (fs.existsSync(audioPath)) {
+          fs.unlinkSync(audioPath);
+          console.log(`[${requestId}] Fichier audio temporaire supprimé:`, audioPath);
+        }
+      } catch (cleanupError) {
+        console.error(`[${requestId}] Erreur lors du nettoyage des fichiers temporaires:`, cleanupError);
+      }
+      
+      throw {
+        ...innerError,
+        isOperational: true,
+        requestId,
+        timestamp: new Date().toISOString()
+      };
+    }
+  } catch (error) {
+    const errorId = `err_${Date.now()}`;
+    const errorDetails = {
+      errorId,
+      timestamp: new Date().toISOString(),
+      message: error.message,
+      code: error.code,
+      requestId: error.requestId || 'unknown',
+      isOperational: error.isOperational || false
+    };
+
+    // Journalisation détaillée en développement
+    console.error(`[${errorId}] Erreur lors de la traduction de la vidéo:`, {
+      ...errorDetails,
+      stack: error.stack,
+      request: {
+        url: req.originalUrl,
+        method: req.method,
+        headers: req.headers,
+        body: req.body
+      }
+    });
+
+    // Réponse d'erreur adaptée
+    const response = {
+      success: false,
+      error: "Une erreur est survenue lors du traitement de votre demande.",
+      errorId,
+      ...(error.isOperational ? { details: error.message } : {})
+    };
+
+    // En production, ne pas renvoyer les détails sensibles
+    if (process.env.NODE_ENV === 'development') {
+      response.stack = error.stack;
+      response.fullError = error;
     }
 
-  } catch (error) {
-    console.error('Erreur détaillée lors de la traduction de la vidéo:', error);
-    res.status(500).json({ 
-      error: "Une erreur est survenue lors de la traduction. Veuillez réessayer.",
-      details: error.message,
-      stack: error.stack
-    });
+    res.status(error.statusCode || 500).json(response);
   }
 });
 
