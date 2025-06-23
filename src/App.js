@@ -5,8 +5,8 @@ import axios from 'axios';
 import { useTheme } from './contexts/ThemeContext';
 import { lightTheme, darkTheme } from './styles/themes';
 
-const API_URL = 'http://localhost:5000/api';
-const BASE_URL = 'http://localhost:5000';
+const API_URL = process.env.REACT_APP_API_URL || 'http://localhost:5000/api';
+const BASE_URL = process.env.REACT_APP_BASE_URL || 'http://localhost:5000';
 
 const languages = [
   { code: 'fr', name: 'Français' },
