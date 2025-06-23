@@ -5,8 +5,17 @@ import axios from 'axios';
 import { useTheme } from './contexts/ThemeContext';
 import { lightTheme, darkTheme } from './styles/themes';
 
+// Vérification des variables d'environnement
+console.log('Environnement de build:', process.env.NODE_ENV);
+console.log('API_URL:', process.env.REACT_APP_API_URL);
+console.log('BASE_URL:', process.env.REACT_APP_BASE_URL);
+
 const API_URL = process.env.REACT_APP_API_URL || 'http://localhost:5000/api';
 const BASE_URL = process.env.REACT_APP_BASE_URL || 'http://localhost:5000';
+
+// Log des URLs utilisées
+console.log('URL de l\'API utilisée:', API_URL);
+console.log('URL de base utilisée:', BASE_URL);
 
 const languages = [
   { code: 'fr', name: 'Français' },
