@@ -20,18 +20,27 @@ app.use((req, res, next) => {
 
 // Configuration CORS améliorée
 app.use(cors({
-  origin: '*',
+  origin: ['https://globaltranscribe.netlify.app', 'http://localhost:3000'],
   methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
   allowedHeaders: ['Content-Type', 'Authorization', 'Accept-Ranges', 'Content-Range', 'Content-Length']
 }));
 
 app.use(express.json());
 
-const youtube = google.youtube('v3');
-
 // Configuration de l'API YouTube
 const YOUTUBE_API_KEY = process.env.YOUTUBE_API_KEY;
-const GOOGLE_CLOUD_PROJECT_ID = process.env.GOOGLE_CLOUD_PROJECT_ID;
+if (!YOUTUBE_API_KEY) {
+  console.error('ERREUR: La variable d\'environnement YOUTUBE_API_KEY n\'est pas définie');
+}
+
+// Initialisation du client YouTube avec la clé API
+const youtube = google.youtube({
+  version: 'v3',
+  auth: YOUTUBE_API_KEY,
+  params: {
+    key: YOUTUBE_API_KEY
+  }
+});
 const GOOGLE_CLOUD_API_KEY = process.env.GOOGLE_CLOUD_API_KEY;
 const AWS_ACCESS_KEY = process.env.AWS_ACCESS_KEY;
 const AWS_SECRET_KEY = process.env.AWS_SECRET_KEY;
@@ -61,18 +70,42 @@ app.use('/downloads', (req, res, next) => {
 app.get('/api/video-info', async (req, res) => {
   try {
     const { videoUrl } = req.query;
+    if (!videoUrl) {
+      return res.status(400).json({ error: 'URL de la vidéo manquante' });
+    }
+
     const videoId = extractVideoId(videoUrl);
+    if (!videoId) {
+      return res.status(400).json({ error: 'ID de vidéo YouTube invalide' });
+    }
+
+    console.log('Tentative de récupération des informations pour la vidéo ID:', videoId);
     
     const response = await youtube.videos.list({
-      key: YOUTUBE_API_KEY,
       part: 'snippet',
-      id: videoId
+      id: videoId,
+      maxResults: 1
     });
 
+    if (!response.data.items || response.data.items.length === 0) {
+      console.error('Aucune donnée trouvée pour la vidéo ID:', videoId);
+      return res.status(404).json({ error: 'Vidéo non trouvée' });
+    }
+
+    console.log('Informations de la vidéo récupérées avec succès');
     res.json(response.data.items[0].snippet);
   } catch (error) {
     console.error('Erreur lors de la récupération des infos vidéo:', error);
-    res.status(500).json({ error: error.message });
+    if (error.response) {
+      console.error('Détails de l\'erreur API YouTube:', {
+        status: error.response.status,
+        data: error.response.data
+      });
+    }
+    res.status(500).json({ 
+      error: 'Erreur lors de la récupération des informations de la vidéo',
+      details: error.message 
+    });
   }
 });
 
