@@ -1,37 +1,23 @@
 {
-  "name": "global-transcribe",
+  "name": "global-transcribe-frontend",
   "version": "1.0.0",
   "private": true,
+  "homepage": ".",
   "scripts": {
-    "start": "concurrently \"npm run server\" \"npm run client\"",
-    "server": "nodemon server/index.js",
-    "client": "react-scripts start",
+    "start": "react-scripts start",
     "build": "react-scripts build",
     "test": "react-scripts test",
     "eject": "react-scripts eject"
   },
   "dependencies": {
-    "@aws-sdk/client-polly": "^3.734.0",
-    "@google-cloud/text-to-speech": "^4.0.0",
-    "@google-cloud/translate": "^7.0.0",
     "axios": "^1.6.0",
-    "cors": "^2.8.5",
-    "dotenv": "^16.4.7",
-    "express": "^4.21.2",
-    "ffmpeg-static": "^5.2.1",
-    "fluent-ffmpeg": "^2.1.2",
-    "googleapis": "^144.0.0",
-    "openai": "^4.80.1",
     "react": "^18.2.0",
     "react-dom": "^18.2.0",
     "react-player": "^2.13.0",
     "react-scripts": "5.0.1",
-    "styled-components": "^6.1.0",
-    "yt-dlp-wrap": "^2.10.8"
+    "styled-components": "^6.1.0"
   },
   "devDependencies": {
-    "concurrently": "^8.2.2",
-    "nodemon": "^3.0.2",
     "@babel/plugin-proposal-private-property-in-object": "^7.21.11"
   },
   "eslintConfig": {

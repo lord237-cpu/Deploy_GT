@@ -1,9 +1,7 @@
 services:
   - type: web
     name: globaltranscribe-backend
-    env: node
-    buildCommand: npm install
-    startCommand: node server/index.js
+    dockerfile: Dockerfile
     envVars:
       - key: PORT
         value: 10000
