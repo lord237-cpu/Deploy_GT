@@ -12,24 +12,25 @@
   "license": "ISC",
   "description": "",
   "dependencies": {
-    "@aws-sdk/client-polly": "^3.700.0",
-    "@google-cloud/speech": "^6.6.0",
-    "@google-cloud/text-to-speech": "^5.3.0",
-    "@google-cloud/translate": "^8.4.0",
+    "@aws-sdk/client-polly": "^3.600.0",
+    "@google-cloud/speech": "^6.0.0",
+    "@google-cloud/text-to-speech": "^5.0.0",
+    "@google-cloud/translate": "^8.0.0",
     "cors": "^2.8.5",
     "dotenv": "^16.4.5",
     "express": "^4.19.2",
     "ffmpeg-static": "^5.1.0",
     "fluent-ffmpeg": "^2.1.2",
-    "googleapis": "^140.0.1",
-    "openai": "^4.63.0",
-    "yt-dlp-wrap": "^2.10.8",
-    "youtube-dl-exec": "^3.0.5"
+    "googleapis": "^130.0.0",
+    "openai": "^4.50.0",
+    "yt-dlp-wrap": "^2.10.0",
+    "youtube-dl-exec": "^3.0.0"
   },
   "devDependencies": {
     "nodemon": "^3.0.2"
   },
   "engines": {
-    "node": ">=18.0.0"
+    "node": ">=18.0.0",
+    "npm": ">=8.0.0"
   }
 }
